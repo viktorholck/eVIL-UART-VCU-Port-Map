@@ -14,6 +14,7 @@ import sys
 from dataclasses import asdict, dataclass
 from typing import Optional
 import serial
+import serial.tools.list_ports  # Needed to patch the serial.tools.list_ports module on Windows
 
 # If running on Windows patch the serial.tools.list_ports to the list_ports_windows local copy
 # To fix a known issue with the serial library on Windows not showing all information for FTDI devices

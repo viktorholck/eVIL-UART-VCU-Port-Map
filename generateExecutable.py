@@ -65,8 +65,8 @@ def build_executable_in_devcontainer():
             raise FileNotFoundError("The 'devcontainer' command is not available in your PATH.")
 
         # Build the development container
-        # buildResult = subprocess.run(['devcontainer', 'build', '--workspace-folder', '.'], shell=True, capture_output=True, text=True, check=True)
-        # printOutput("Container build", buildResult)
+        # build_result = subprocess.run(['devcontainer', 'build', '--workspace-folder', '.'], shell=True, capture_output=True, text=True, check=True, encoding='utf-8')
+        # print_output("Container build", build_result)
 
         # Run the development container
         up_result = subprocess.run(['devcontainer', 'up', '--workspace-folder', '.'], shell=True, capture_output=True, text=True, check=True, encoding='utf-8')
@@ -75,7 +75,7 @@ def build_executable_in_devcontainer():
         # Parse the JSON output to get the containerId
         container_info = json.loads(up_result.stdout)
         container_id = container_info.get("containerId")
-        # remoteWorkspaceFolder = containerInfo.get("remoteWorkspaceFolder")
+        # remote_workspace_folder = container_info.get("remoteWorkspaceFolder")
         if not container_id:
             raise ValueError("Failed to get containerId from the output")
 
@@ -84,8 +84,8 @@ def build_executable_in_devcontainer():
         print_output("Script execution", exec_result)
 
         # Stop and delete the container
-        # downResult = subprocess.run(['devcontainer', 'down', '--container-id', containerId], shell=True, capture_output=True, text=True, check=True)  # Not working in cli yet
-        # print(f'downResult: {downResult}')
+        # down_result = subprocess.run(['devcontainer', 'down', '--container-id', containerId], shell=True, capture_output=True, text=True, check=True)  # Not working in cli yet
+        # print("Container down: ", down_result)
 
         # Stop and remove the container using Docker commands
         stop_result = subprocess.run(['docker', 'stop', container_id], shell=True, capture_output=True, text=True, check=True, encoding='utf-8')
@@ -103,7 +103,10 @@ def build_executable_in_devcontainer():
         sys.exit(1)
 
 
-if __name__ == "__main__":
+def main():
+    """
+    Main function to parse arguments and trigger the build process.
+    """
     argparser = argparse.ArgumentParser(description="Generate executable for UARTVCUPortMap")
     argBuildGroup = argparser.add_mutually_exclusive_group()
     argBuildGroup.add_argument("--container", help="Build and run in devcontainer", action="store_true")
@@ -122,3 +125,7 @@ if __name__ == "__main__":
             raise Exception('Unsupported platform')
 
         run_pyinstaller('UARTVCUPortMap.py', WORKPATH)
+
+
+if __name__ == "__main__":
+    main()
