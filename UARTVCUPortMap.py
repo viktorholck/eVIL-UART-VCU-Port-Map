@@ -55,7 +55,7 @@ class VCUPort:
         add_1_if_windows = 1 if PLATFORM_WINDOWS else 0
 
         # print(f"FTDI1: {self.FTDI1}, FTDI2: {self.FTDI2}")
-        if self.FTDI2 is not None:
+        if self.FTDI2 is not None:  # if there are two FTDI devices (Sisyphos board)
             return {
                 "HPA": rf".*{self.FTDI1}:1\.{0+add_1_if_windows}",
                 "HIA": rf".*{self.FTDI1}:1\.{3+add_1_if_windows}",
@@ -64,7 +64,7 @@ class VCUPort:
                 "SGA": rf".*{self.FTDI2}:1\.{0+add_1_if_windows}",
                 "JUMPERS": rf".*{self.FTDI2}:1\.{1+add_1_if_windows}"
                 }
-        else:
+        else:  # if there is only one FTDI device (verC board)
             return {
                 "HPA": rf".*{self.FTDI1}:1\.{2+add_1_if_windows}",
                 "HIA": rf".*{self.FTDI1}:1\.{0+add_1_if_windows}",
