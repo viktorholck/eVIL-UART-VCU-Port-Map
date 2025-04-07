@@ -1,0 +1,71 @@
+version: 3
+
+tasks:
+  build:
+    desc: Build all the executables for the project
+    cmds:
+      - task: build:UARTVCUPortMap
+      - task: build:testPortMap
+  
+  build:UARTVCUPortMap:
+    desc: Build the executable for UARTVCUPortMap
+    cmds:
+      - task: .build:script
+        vars: 
+          script: 'UARTVCUPortMap.py'
+  
+  build:testPortMap:
+    desc: Build the executable for testPortMap
+    cmds:
+      - task: .build:script
+        vars: 
+          script: 'testPortMap.py'
+
+  .build:script:
+    # desc: Build the executable for a script
+    cmds:
+      - python generateExecutable.py --script {{.script}}
+    deps:
+      - task: venv
+
+  venv:
+    desc: Create a virtual environment
+    cmds:
+      - uv add -r requirements.txt
+      # - python -m venv .venv
+      # - .venv\\Scripts\\activate.bat
+      # - pip install -r requirements.txt
+    status:
+      # - python -c "import sys, os; print('Virtual environment is active' if os.path.basename(sys.prefix) == '.venv' else 'Virtual environment is NOT active'); exit(0 if os.path.basename(sys.prefix) == '.venv' else 1)"
+  
+  venv:activate:
+    desc: Activate the virtual environment
+    cmds:
+      - .venv\\Scripts\\activate.bat
+    status:
+      - python -c "import sys, os; print('Virtual environment is active' if os.path.basename(sys.prefix) == '.venv' else 'Virtual environment is NOT active'); exit(0 if os.path.basename(sys.prefix) == '.venv' else 1)"
+  
+  # clean:
+  #   desc: Clean the project
+  #   cmds:
+  #     - del /s /q *.spec
+  #     - del /s /q dist
+  #     - del /s /q buildLinux
+  #     - del /s /q buildWindows
+  #     - rmdir /s /q .venv
+
+  clean:
+    desc: Clean the project
+    cmds:
+      - cmd: deactivate
+        ignore_error: true
+      - cmd: powershell -Command "Remove-Item -Recurse -Force *.spec -ErrorAction SilentlyContinue"
+        ignore_error: true
+      - cmd: powershell -Command "Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue"
+        ignore_error: true
+      - cmd: powershell -Command "Remove-Item -Recurse -Force buildLinux -ErrorAction SilentlyContinue"
+        ignore_error: true
+      - cmd: powershell -Command "Remove-Item -Recurse -Force buildWindows -ErrorAction SilentlyContinue"
+        ignore_error: true
+      - cmd: powershell -Command "Remove-Item -Recurse -Force .venv -ErrorAction SilentlyContinue"
+        ignore_error: true

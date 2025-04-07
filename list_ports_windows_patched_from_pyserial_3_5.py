@@ -371,16 +371,22 @@ def iterate_comports():
                         info.location = ''.join(location)
                 info.hwid = info.usb_info()
             elif szHardwareID_str.startswith('FTDIBUS'):
-                # m = re.search(r'VID_([0-9a-f]{4})\+PID_([0-9a-f]{4})(\+(\w+))?', szHardwareID_str, re.I)
+                # m = re.search(r'VID_([0-9a-f]{4})\+PID_([0-9a-f]{4})(\+(\w+))?', szHardwareID_str, re.I)  # Original line
                 m = re.search(r'VID_([0-9a-f]{4})\+PID_([0-9a-f]{4})(\+(\w*))&(\w*)&(\w*)&(\w*)&(\w*)?', szHardwareID_str, re.I)
+                # print(szHardwareID_str) # Debugging
                 if m:
                     info.vid = int(m.group(1), 16)
                     info.pid = int(m.group(2), 16)
                     if m.group(4):
                         info.serial_number = m.group(4)
                 # USB location is hidden by FDTI driver :(
-                if m.group(8):
-                        info.location =  int(m.group(8),16)  # This is not the correct location, but it is the only one available from the FTDI driver
+                # if m.group(8):
+                        # info.location =  int(m.group(8),16)  # This is not the correct location, but it is the only one available from the FTDI driver
+                if m.group(7) and m.group(8):  # This is not the correct location, but it is the only one available from the FTDI driver
+                    info.location = '{}:1.{}'.format(
+                        int(m.group(7), 16),
+                        int(m.group(8), 16))
+                    # print(f'info.location: {info.location}')  # Debugging
                 info.hwid = info.usb_info()
             else:
                 info.hwid = szHardwareID_str

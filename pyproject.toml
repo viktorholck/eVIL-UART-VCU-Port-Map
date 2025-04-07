@@ -1,0 +1,18 @@
+[project]
+name = "evil-uart-vcu-port-map"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "altgraph==0.17.4",
+    "packaging==24.2",
+    "pefile==2023.2.7",
+    "pyinstaller==6.12.0",
+    "pyinstaller-hooks-contrib==2025.1",
+    "pyserial==3.5",
+    "pywin32-ctypes==0.2.3",
+    "setuptools==76.0.0",
+    "types-pyinstaller==6.12.0.20250308",
+    "types-pyserial==3.5.0.20250304",
+]
