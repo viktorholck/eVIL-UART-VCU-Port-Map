@@ -62,7 +62,7 @@ class VCUPort:
                 "HIB": rf".*{self.FTDI1}:1\.{2+add_1_if_windows}",
                 "LPA": rf".*{self.FTDI1}:1\.{1+add_1_if_windows}",
                 "SGA": rf".*{self.FTDI2}:1\.{0+add_1_if_windows}",
-                "JUMPERS": rf".*{self.FTDI2}:1\.{1+add_1_if_windows}"
+                # "JUMPERS": rf".*{self.FTDI2}:1\.{1+add_1_if_windows}"
                 }
         else:  # if there is only one FTDI device (verC board)
             return {
@@ -71,7 +71,7 @@ class VCUPort:
                 "HIB": rf".*{self.FTDI1}:1\.{1+add_1_if_windows}",
                 "LPA": rf".*{self.FTDI1}:1\.{3+add_1_if_windows}",
                 "SGA": None,
-                "JUMPERS": None
+                # "JUMPERS": None
                 }
 
 
