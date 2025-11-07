@@ -4,39 +4,42 @@ tasks:
   build:
     desc: Build all the executables for the project
     cmds:
-      - task: build:UARTVCUPortMap
-      - task: build:testPortMap
+      - task: .build:scripts
+        vars:
+          scripts: "UARTVCUPortMap.py testPortMap.py"
   
   build:UARTVCUPortMap:
     desc: Build the executable for UARTVCUPortMap
     cmds:
-      - task: .build:script
+      - task: .build:scripts
         vars: 
-          script: 'UARTVCUPortMap.py'
+          scripts: 'UARTVCUPortMap.py'
   
   build:testPortMap:
     desc: Build the executable for testPortMap
     cmds:
-      - task: .build:script
+      - task: .build:scripts
         vars: 
-          script: 'testPortMap.py'
+          scripts: 'testPortMap.py'
 
-  .build:script:
-    # desc: Build the executable for a script
+  .build:scripts:
+    internal: true
+    desc: Build multiple scripts in a single invocation (uses generateExecutable.py nargs='+')
     cmds:
-      # To avoid automatic image rebuilds, do not run the conditional rebuild here.
-      # Run 'task devcontainer:rebuild' manually when you want to rebuild the image.
-      - uv run generateExecutable.py --script {{.script}}
+      - uv run generateExecutable.py --script {{.scripts}}
     deps:
       - task: venv
+      - task: devcontainer:build
 
-  devcontainer:maybe-rebuild:
-    desc: Conditionally rebuild the devcontainer image when `.devcontainer` changes
+  devcontainer:build:
+    desc: Build the devcontainer image if needed (devcoontainer.json/Dockerfile changed or any file in .devcontainer/)
     cmds:
-      - cmd: 'cmd /c "git status --porcelain .devcontainer | findstr /r . >nul && (echo UNCOMMITTED & devcontainer build --workspace-folder . --no-cache) || (git rev-parse --verify HEAD:.devcontainer > .devcontainer\\.cur_tree 2>nul || (echo UNTRACKED>.devcontainer\\.cur_tree) & if not exist .devcontainer\\.last_tree (echo BUILD & devcontainer build --workspace-folder . --no-cache & move /Y .devcontainer\\.cur_tree .devcontainer\\.last_tree) else (fc .devcontainer\\.cur_tree .devcontainer\\.last_tree >nul && (echo NOCHANGE & del /q .devcontainer\\.cur_tree) || (echo CHANGED & devcontainer build --workspace-folder . --no-cache & move /Y .devcontainer\\.cur_tree .devcontainer\\.last_tree)))"'
-
-  devcontainer:rebuild:
-    desc: Manually rebuild the devcontainer image (run this when you want a fresh image)
+      - cmd: 'devcontainer build --workspace-folder . --no-cache'
+    sources:
+      - .devcontainer/**
+  
+  devcontainer:build-force:
+    desc: Build the devcontainer image (force rebuild) even if nothing has changed (devcoontainer.json/Dockerfile/.devcontainer/)
     cmds:
       - cmd: 'devcontainer build --workspace-folder . --no-cache'
 
@@ -57,15 +60,6 @@ tasks:
       - .venv\\Scripts\\activate.bat
     status:
       - python -c "import sys, os; print('Virtual environment is active' if os.path.basename(sys.prefix) == '.venv' else 'Virtual environment is NOT active'); exit(0 if os.path.basename(sys.prefix) == '.venv' else 1)"
-  
-  # clean:
-  #   desc: Clean the project
-  #   cmds:
-  #     - del /s /q *.spec
-  #     - del /s /q dist
-  #     - del /s /q buildLinux
-  #     - del /s /q buildWindows
-  #     - rmdir /s /q .venv
 
   clean:
     desc: Clean the project

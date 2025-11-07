@@ -54,9 +54,12 @@ def print_output(label: str, output: subprocess.CompletedProcess):
     print('#################################################################')
 
 
-def build_executable_in_devcontainer(script: str):
+def build_executable_in_devcontainer(scripts):
     """
-    Build a (linux) executable in a development container.
+    Build one or more (linux) executables in a development container.
+
+    `scripts` is an iterable of script filenames. The devcontainer is started once,
+    `uv sync`/the venv is prepared once and then each script is built sequentially.
     """
     try:
         # Check if the devcontainer command is available
@@ -85,32 +88,40 @@ def build_executable_in_devcontainer(script: str):
         # remote_workspace_folder = container_info.get("remoteWorkspaceFolder")
         if not container_id:
             raise ValueError("Failed to get containerId from the output")
-
-        # Run the script to generate the executable inside the uv-managed project environment.
-        # Use the container's environment (containerEnv in devcontainer.json) to set UV_PROJECT_ENVIRONMENT.
-        # exec_result = subprocess.run(['devcontainer', 'exec', '--container-id', container_id, '--workspace-folder', '.', 'python', f'{os.path.basename(__file__)}', '--local'], shell=True, capture_output=True, text=True, check=True, encoding='utf-8')
-        # exec_result = subprocess.run(['devcontainer', 'exec', '--workspace-folder', '.', 'python', f'{os.path.basename(__file__)}', '--local', '--script', script], shell=True, capture_output=True, text=True, check=True, encoding='utf-8')
-
-    # Run `uv run` inside the devcontainer. Use shell=True on Windows to let the host shell
-    # resolve the `devcontainer` launcher; on POSIX run list-style (shell=False).
-        list_cmd = [
-            'devcontainer', 'exec', '--workspace-folder', '.',
-            'uv', 'run', 'python', os.path.basename(__file__), '--local', '--script', script
-        ]
-
+        # Run uv once to ensure the container-local venv is created and packages installed.
+        # We run a no-op uv command (or uv sync) before building scripts to ensure the environment.
+        uv_sync_cmd = ['devcontainer', 'exec', '--workspace-folder', '.', 'uv', 'sync']
         if platform.system() == 'Windows':
-            # Build a shell-friendly command string for PowerShell
-            # Use double quotes around arguments containing spaces just in case.
-            cmd_str = ' '.join([
-                'devcontainer', 'exec', '--workspace-folder', '.',
-                'uv', 'run', 'python', f"{os.path.basename(__file__)}", '--local', '--script', script
-            ])
-            exec_result = subprocess.run(cmd_str, shell=True, capture_output=True, text=True, check=True, encoding='utf-8')
+            cmd = ' '.join(uv_sync_cmd)
+            proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, encoding='utf-8')
         else:
-            # POSIX: prefer list-style invocation
-            exec_result = subprocess.run(list_cmd, shell=False, capture_output=True, text=True, check=True, encoding='utf-8')
+            proc = subprocess.run(uv_sync_cmd, shell=False, capture_output=True, text=True, encoding='utf-8')
 
-        print_output("Script execution", exec_result)
+        if proc.returncode != 0:
+            print('uv sync failed inside devcontainer:')
+            print('--- stdout ---')
+            print(proc.stdout)
+            print('--- stderr ---')
+            print(proc.stderr)
+            # raise to trigger the existing subprocess.CalledProcessError handler
+            raise subprocess.CalledProcessError(proc.returncode, getattr(proc, 'args', uv_sync_cmd))
+
+        # Build each script inside the running devcontainer sequentially.
+        for script in scripts:
+            list_cmd = [
+                'devcontainer', 'exec', '--workspace-folder', '.',
+                'uv', 'run', 'python', os.path.basename(__file__), '--local', '--script', script
+            ]
+
+            if platform.system() == 'Windows':
+                cmd_str = ' '.join(list_cmd)
+                # Stream output directly to the console for long-running builds
+                exec_result = subprocess.run(cmd_str, shell=True, check=True)
+            else:
+                # Stream output directly to the console for long-running builds
+                exec_result = subprocess.run(list_cmd, shell=False, check=True)
+
+            print_output(f"Script execution ({script})", exec_result)
 
         # Stop and delete the container
         # down_result = subprocess.run(['devcontainer', 'down', '--container-id', containerId], shell=True, capture_output=True, text=True, check=True)  # Not working in cli yet
@@ -149,14 +160,20 @@ def main():
     Main function to parse arguments and trigger the build process.
     """
     argparser = argparse.ArgumentParser(description="Generate executable for UARTVCUPortMap")
-    argparser.add_argument("--script", help="The script to be bundled into an executable", default="UARTVCUPortMap.py")
+    argparser.add_argument(
+        "--script",
+        help="One or more scripts to be bundled into executables (space separated).",
+        nargs='+',
+        default=["UARTVCUPortMap.py"],
+    )
     arg_build_group = argparser.add_mutually_exclusive_group()
     arg_build_group.add_argument("--container", help="Build and run in devcontainer", action="store_true")
     arg_build_group.add_argument("--local", help="Build and run locally", action="store_true")
     args = argparser.parse_args()
 
     if not args.local:
-        build_executable_in_devcontainer(script=args.script)
+        # args.script is now a list of one or more script paths
+        build_executable_in_devcontainer(scripts=args.script)
 
     if not args.container:
         if platform.system() == "Windows":
@@ -166,7 +183,9 @@ def main():
         else:
             raise RuntimeError('Unsupported platform')
 
-        run_pyinstaller(args.script, WORKPATH)
+        # Build each requested script locally
+        for script in args.script:
+            run_pyinstaller(script, WORKPATH)
 
 
 if __name__ == "__main__":
