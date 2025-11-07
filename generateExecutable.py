@@ -86,9 +86,29 @@ def build_executable_in_devcontainer(script: str):
         if not container_id:
             raise ValueError("Failed to get containerId from the output")
 
-        # Run the script to generate the executable
+        # Run the script to generate the executable inside the uv-managed project environment.
+        # Use the container's environment (containerEnv in devcontainer.json) to set UV_PROJECT_ENVIRONMENT.
         # exec_result = subprocess.run(['devcontainer', 'exec', '--container-id', container_id, '--workspace-folder', '.', 'python', f'{os.path.basename(__file__)}', '--local'], shell=True, capture_output=True, text=True, check=True, encoding='utf-8')
-        exec_result = subprocess.run(['devcontainer', 'exec', '--workspace-folder', '.', 'python', f'{os.path.basename(__file__)}', '--local', '--script', script], shell=True, capture_output=True, text=True, check=True, encoding='utf-8')
+        # exec_result = subprocess.run(['devcontainer', 'exec', '--workspace-folder', '.', 'python', f'{os.path.basename(__file__)}', '--local', '--script', script], shell=True, capture_output=True, text=True, check=True, encoding='utf-8')
+
+    # Run `uv run` inside the devcontainer. Use shell=True on Windows to let the host shell
+    # resolve the `devcontainer` launcher; on POSIX run list-style (shell=False).
+        list_cmd = [
+            'devcontainer', 'exec', '--workspace-folder', '.',
+            'uv', 'run', 'python', os.path.basename(__file__), '--local', '--script', script
+        ]
+
+        if platform.system() == 'Windows':
+            # Build a shell-friendly command string for PowerShell
+            # Use double quotes around arguments containing spaces just in case.
+            cmd_str = ' '.join([
+                'devcontainer', 'exec', '--workspace-folder', '.',
+                'uv', 'run', 'python', f"{os.path.basename(__file__)}", '--local', '--script', script
+            ])
+            exec_result = subprocess.run(cmd_str, shell=True, capture_output=True, text=True, check=True, encoding='utf-8')
+        else:
+            # POSIX: prefer list-style invocation
+            exec_result = subprocess.run(list_cmd, shell=False, capture_output=True, text=True, check=True, encoding='utf-8')
 
         print_output("Script execution", exec_result)
 
@@ -108,7 +128,19 @@ def build_executable_in_devcontainer(script: str):
         print("Make sure the 'devcontainer' command is available in your PATH.")
         sys.exit(1)
     except subprocess.CalledProcessError as e:
-        print(f"Error: {e}")
+        # Print detailed subprocess output to help debugging when a command fails
+        print(f"Error: command failed: {getattr(e, 'cmd', None)}")
+        print(f"Return code: {getattr(e, 'returncode', None)}")
+        try:
+            print('--- stdout ---')
+            print(e.stdout)
+        except AttributeError:
+            pass
+        try:
+            print('--- stderr ---')
+            print(e.stderr)
+        except AttributeError:
+            pass
         sys.exit(1)
 
 
@@ -132,7 +164,7 @@ def main():
         elif platform.system() == "Linux":
             WORKPATH = 'buildLinux'
         else:
-            raise Exception('Unsupported platform')
+            raise RuntimeError('Unsupported platform')
 
         run_pyinstaller(args.script, WORKPATH)
 

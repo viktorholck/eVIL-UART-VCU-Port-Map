@@ -24,14 +24,27 @@ tasks:
   .build:script:
     # desc: Build the executable for a script
     cmds:
-      - python generateExecutable.py --script {{.script}}
+      # To avoid automatic image rebuilds, do not run the conditional rebuild here.
+      # Run 'task devcontainer:rebuild' manually when you want to rebuild the image.
+      - uv run generateExecutable.py --script {{.script}}
     deps:
       - task: venv
+
+  devcontainer:maybe-rebuild:
+    desc: Conditionally rebuild the devcontainer image when `.devcontainer` changes
+    cmds:
+      - cmd: 'cmd /c "git status --porcelain .devcontainer | findstr /r . >nul && (echo UNCOMMITTED & devcontainer build --workspace-folder . --no-cache) || (git rev-parse --verify HEAD:.devcontainer > .devcontainer\\.cur_tree 2>nul || (echo UNTRACKED>.devcontainer\\.cur_tree) & if not exist .devcontainer\\.last_tree (echo BUILD & devcontainer build --workspace-folder . --no-cache & move /Y .devcontainer\\.cur_tree .devcontainer\\.last_tree) else (fc .devcontainer\\.cur_tree .devcontainer\\.last_tree >nul && (echo NOCHANGE & del /q .devcontainer\\.cur_tree) || (echo CHANGED & devcontainer build --workspace-folder . --no-cache & move /Y .devcontainer\\.cur_tree .devcontainer\\.last_tree)))"'
+
+  devcontainer:rebuild:
+    desc: Manually rebuild the devcontainer image (run this when you want a fresh image)
+    cmds:
+      - cmd: 'devcontainer build --workspace-folder . --no-cache'
 
   venv:
     desc: Create a virtual environment
     cmds:
-      - uv add -r requirements.txt
+      # - uv add -r requirements.txt
+      - uv sync
       # - python -m venv .venv
       # - .venv\\Scripts\\activate.bat
       # - pip install -r requirements.txt
@@ -68,4 +81,6 @@ tasks:
       - cmd: powershell -Command "Remove-Item -Recurse -Force buildWindows -ErrorAction SilentlyContinue"
         ignore_error: true
       - cmd: powershell -Command "Remove-Item -Recurse -Force .venv -ErrorAction SilentlyContinue"
+        ignore_error: true
+      - cmd: powershell -Command "Remove-Item -Recurse -Force .venv_devcontainer -ErrorAction SilentlyContinue"
         ignore_error: true

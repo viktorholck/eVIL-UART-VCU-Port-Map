@@ -1,21 +1,28 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/python
 {
-	"name": "Python 3",
+	"name": "Python 3 with UV sync",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye",
+	// "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye", //Python and os version pinned
+	"image": "mcr.microsoft.com/devcontainers/python:1-3", //Latest
 
 	// Set container name
 	"runArgs": ["--name", "${containerWorkspaceFolderBasename}_devcontainer"],
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
+	"features": {
+		"ghcr.io/va-h/devcontainers-features/uv:1": {}
+	},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "pip3 install --user -r requirements.txt"
+	"containerEnv": {
+		"UV_PROJECT_ENVIRONMENT": ".venv_devcontainer" //Specify the name of the virtual environment folder inside the container. Will be availale in local workspace as .venv_devcontainer. Name changed to avoid collision with local venv.
+	},
+
+	"postCreateCommand": "uv sync" //Create and sync the virtual environment inside the container. Will use the folder name specified in UV_PROJECT_ENVIRONMENT above.
 
 	// Configure tool-specific properties.
 	// "customizations": {},

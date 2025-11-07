@@ -72,8 +72,8 @@ def send_command_to_serial_device(uart_target: str, uart_target_port: str, baudr
             if verbose:
                 # Clean up the response for display
                 clean_response = response.strip().replace('\n', ' ').replace('\r', '')
-                if len(clean_response) > 60:
-                    clean_response = clean_response[:57] + "..."
+                # if len(clean_response) > 60:
+                #     clean_response = clean_response[:57] + "..."
                 
                 # Show command and response separately for clarity
                 if command:
