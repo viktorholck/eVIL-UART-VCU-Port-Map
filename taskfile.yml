@@ -61,11 +61,59 @@ tasks:
     status:
       - python -c "import sys, os; print('Virtual environment is active' if os.path.basename(sys.prefix) == '.venv' else 'Virtual environment is NOT active'); exit(0 if os.path.basename(sys.prefix) == '.venv' else 1)"
 
+  venv:kill-pythons:
+    desc: Kill running python processes whose executable path is inside the workspace and contains a venv folder (Windows only).
+    cmds:
+      - cmd: >
+          powershell -NoProfile -Command '& {
+            $cwd = (Get-Location).Path
+            $procs = Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.Name -match "python" }
+            $stopped = @()
+            $errors = @()
+            foreach ($p in $procs) {
+              try {
+                $exec = $p.ExecutablePath
+                $dirPath = [System.IO.Path]::GetDirectoryName($exec)
+                if (-not $dirPath) { continue }
+                $dir = New-Object System.IO.DirectoryInfo($dirPath)
+                $inside = $false
+                while ($dir -ne $null) {
+                  if ($dir.FullName -eq $cwd) { $inside = $true; break }
+                  $dir = $dir.Parent
+                }
+                if ($inside -and ($exec -match "\\.venv\\" -or $exec -match "\\.venv_devcontainer\\" -or $exec -match "\\\\venv\\\\")) {
+                  Write-Output "Stopping python PID $($p.ProcessId): $exec"
+                  try {
+                    Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop
+                    $stopped += @{ pid = $p.ProcessId; path = $exec }
+                  } catch {
+                    $err = "Failed to stop PID $($p.ProcessId): $($_.Exception.Message)"
+                    Write-Output $err
+                    $errors += $err
+                  }
+                }
+              } catch {
+                $msg = "Error handling PID $($p.ProcessId): $($_.Exception.Message)"
+                Write-Output $msg
+                $errors += $msg
+              }
+            }
+            if ($stopped.Count -gt 0) {
+              Write-Output "Stopped $($stopped.Count) python process(es)."
+              foreach ($s in $stopped) { Write-Output " - PID $($s.pid): $($s.path)" }
+            } else {
+              Write-Output "No running python processes found inside workspace venvs."
+            }
+            if ($errors.Count -gt 0) { Write-Output "Encountered $($errors.Count) errors during operation." }
+          }'
+        silent: true
+    ignore_error: true
+
   clean:
     desc: Clean the project
     cmds:
-      - cmd: deactivate
-        ignore_error: true
+      # - cmd: deactivate
+      #   ignore_error: true
       - cmd: powershell -Command "Remove-Item -Recurse -Force *.spec -ErrorAction SilentlyContinue"
         ignore_error: true
       - cmd: powershell -Command "Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue"
@@ -78,3 +126,5 @@ tasks:
         ignore_error: true
       - cmd: powershell -Command "Remove-Item -Recurse -Force .venv_devcontainer -ErrorAction SilentlyContinue"
         ignore_error: true
+    deps:
+      - task: venv:kill-pythons
